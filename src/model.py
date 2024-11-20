@@ -16,9 +16,20 @@ def train_model(X_train, y_train, random_state=42):
     return model
 
 def evaluate_model(model, X_test, y_test):
-    """Evaluate the model and return the classification report."""
+    """
+    Evaluate the model and return the classification report as a dictionary.
+    
+    Args:
+        model: The trained model to evaluate.
+        X_test: The test features.
+        y_test: The true labels for the test set.
+    
+    Returns:
+        dict: Classification report as a dictionary.
+    """
     y_pred = model.predict(X_test)
-    report = classification_report(y_test, y_pred)
+    # Generate a classification report as a dictionary
+    report = classification_report(y_test, y_pred, output_dict=True)
     return report
 
 def tune_hyperparameters_random(model, X_train, y_train, n_iter=20, cv=3):

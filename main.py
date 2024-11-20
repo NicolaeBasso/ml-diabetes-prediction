@@ -1,3 +1,4 @@
+import logging
 from src.data_loader import load_data, split_data
 from src.model import (
     train_model,
@@ -10,78 +11,49 @@ from src.model import (
 )
 from src.utils import save_model
 from src.visualizations import plot_feature_importance, plot_confusion_matrix
+from src.evaluator import evaluate_across_splits
+from sklearn.metrics import roc_auc_score, log_loss
+import numpy as np
 
 # File paths
 DATA_PATH = "./data/diabetes_binary_5050split_health_indicators_BRFSS2015.csv"
 MODEL_PATH = "./models/diabetes_rf_model.pkl"
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+# Define random states for multiple splits
+random_states = [42, 100, 200]
+
 def main():
     # Step 1: Load and preprocess the data
-    print("Loading data...")
+    logging.info("Loading data...")
     X, y = load_data(DATA_PATH)
 
-    # Step 2: Split the data
-    print("Splitting data...")
-    X_train, X_test, y_train, y_test = split_data(X, y)
+    # Step 2: Evaluate across splits
+    all_results = evaluate_across_splits(X, y, random_states)
 
-    # Step 3: Train the baseline Random Forest model
-    print("Training baseline Random Forest model...")
-    model = train_model(X_train, y_train)
+    # Step 3: Aggregate and display results
+    for model_name in ["Random Forest", "XGBoost", "LightGBM", "Logistic Regression"]:
+        model_results = [r for r in all_results if r["model"] == model_name]
+        mean_f1 = np.mean([r["f1_score"] for r in model_results])
+        mean_auc = np.mean([r["auc_roc"] for r in model_results])
+        mean_log_loss = np.mean([r["log_loss"] for r in model_results])
+        logging.info(f"\n{model_name} - Mean Metrics Across Splits:")
+        logging.info(f"F1-Score: {mean_f1:.4f}, AUC-ROC: {mean_auc:.4f}, Log-Loss: {mean_log_loss:.4f}")
 
-    # Step 4: Evaluate the model
-    print("Evaluating baseline Random Forest model...")
-    report = evaluate_model(model, X_test, y_test)
-    print(report)
+    # Step 4: Hyperparameter tuning for Random Forest
+    logging.info("Loading Random Forest model for hyperparameter tuning...")
+    rf_model = train_model(X, y)
+    logging.info("Tuning hyperparameters for Random Forest...")
+    best_rf_model, best_params = tune_hyperparameters_random(rf_model, X, y, n_iter=20)
+    logging.info(f"Best Hyperparameters for Random Forest: {best_params}")
 
-    # Step 5: Plot feature importance for baseline model
-    print("Plotting feature importance for Random Forest...")
-    plot_feature_importance(model, X.columns)
-
-    # Step 6: Hyperparameter tuning for Random Forest
-   # Perform random search hyperparameter tuning
-    print("Tuning hyperparameters using RandomizedSearchCV...")
-    best_model, best_params = tune_hyperparameters_random(model, X_train, y_train, n_iter=20)
-    print(f"Best Parameters: {best_params}")
-
-    # Step 7: Evaluate the tuned model
-    print("Evaluating tuned Random Forest model...")
-    tuned_report = evaluate_model(best_model, X_test, y_test)
-    print(tuned_report)
-
-    # Step 8: Save the best model
-    print("Saving tuned Random Forest model...")
-    save_model(best_model, MODEL_PATH)
-    print(f"Model saved to {MODEL_PATH}")
-
-    # Step 9: Train and evaluate alternative models
-    print("Training XGBoost...")
-    xgb_model = train_xgboost(X_train, y_train)
-    xgb_report = evaluate_model(xgb_model, X_test, y_test)
-    print("\nXGBoost Evaluation:")
-    print(xgb_report)
-
-    print("Training LightGBM...")
-    lgb_model = train_lightgbm(X_train, y_train)
-    lgb_report = evaluate_model(lgb_model, X_test, y_test)
-    print("\nLightGBM Evaluation:")
-    print(lgb_report)
-
-    print("Training Logistic Regression...")
-    lr_model = train_logistic_regression(X_train, y_train)
-    lr_report = evaluate_model(lr_model, X_test, y_test)
-    print("\nLogistic Regression Evaluation:")
-    print(lr_report)    
-
-    # Step 10: Plot confusion matrix for tuned Random Forest model
-    print("Plotting confusion matrix for tuned Random Forest model...")
-    labels = ['No Diabetes (0)', 'Diabetes (1)']
-    plot_confusion_matrix(best_model, X_test, y_test, labels)
-
-    # Step 11: Perform cross-validation
-    print("Performing cross-validation on tuned Random Forest model...")
-    cv_scores = cross_validate_model(best_model, X, y)
-    print(f"Cross-Validation Scores: {cv_scores}")
-    print(f"Average F1-Score: {cv_scores.mean():.4f}")
+    # Step 5: Perform cross-validation on tuned Random Forest model
+    logging.info("Performing cross-validation on tuned Random Forest model...")
+    cv_scores = cross_validate_model(best_rf_model, X, y)
+    logging.info(f"Cross-Validation Scores: {cv_scores}")
+    logging.info(f"Average F1-Score: {cv_scores.mean():.4f}")
 
 if __name__ == "__main__":
     main()
