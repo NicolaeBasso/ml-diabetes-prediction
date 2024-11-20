@@ -1,9 +1,6 @@
 /models/*
 /data/*
 
-/models/
-/data/
-
 *.DS_Store
 
-*/__pycache__/
+__pycache__/
