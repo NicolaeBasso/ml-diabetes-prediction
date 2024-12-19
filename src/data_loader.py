@@ -12,6 +12,7 @@ def load_data(file_path):
     # Split features and target
     X = df.drop('Diabetes_binary', axis=1)
     y = df['Diabetes_binary']
+    
     return X, y
 
 def split_data(X, y, test_size=0.2, random_state=42, stratify=None):
