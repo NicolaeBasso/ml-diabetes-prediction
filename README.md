@@ -6,3 +6,6 @@ pip install pandas numpy scikit-learn matplotlib seaborn
 
 (optional) To run python virtual environment from current folder:
 source venv/bin/activate
+
+Run via main file:
+python3 main.py
