@@ -1,4 +1,6 @@
 import logging
+import os  # Import os to access environment variables
+from dotenv import load_dotenv  # Import dotenv
 from sklearn.metrics import roc_auc_score, log_loss
 from src.data_loader import split_data
 from src.model import (
@@ -10,6 +12,8 @@ from src.model import (
 )
 from src.utils import save_model
 from src.visualizations import plot_confusion_matrix, plot_feature_importance
+
+load_dotenv()
 
 def evaluate_across_splits(X, y, random_states):
     """
@@ -24,6 +28,9 @@ def evaluate_across_splits(X, y, random_states):
         list: A list of results containing metrics for each split and model.
     """
     results = []
+
+    # Read SHOW_PLOTS from the environment or default to 1
+    show_plots = os.getenv("SHOW_PLOTS", "1") == "1"
 
     for random_state in random_states:
         logging.info(f"\nEvaluating models with random_state={random_state}...")
@@ -66,12 +73,13 @@ def evaluate_across_splits(X, y, random_states):
             save_model(model, f"./models/{model_name.lower().replace(' ', '_')}_split_{random_state}.pkl")
 
             # Plot confusion matrix
-            labels = ['No Diabetes (0)', 'Diabetes (1)']
-            logging.info(f"Plotting confusion matrix for {model_name}...")
-            plot_confusion_matrix(model, X_test, y_test, labels, model_name)
+            if show_plots:
+                labels = ['No Diabetes (0)', 'Diabetes (1)']
+                logging.info(f"Plotting confusion matrix for {model_name}...")
+                plot_confusion_matrix(model, X_test, y_test, labels, model_name)
 
             # Plot feature importance (only for tree-based models)
-            if hasattr(model, 'feature_importances_'):
+            if show_plots and hasattr(model, 'feature_importances_'):
                 logging.info(f"Plotting feature importance for {model_name}...")
                 plot_feature_importance(model, X.columns, model_name)
 
